@@ -6,19 +6,81 @@
     <title>Task Management System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
-        .container { max-width: 900px; margin: auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        h2 { text-align: center; }
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid #ddd; }
-        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #4CAF50; color: white; }
-        .actions button { margin-right: 5px; }
-        .file-input { margin-top: 10px; }
-        .form-section { margin-bottom: 20px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e6ffe6; /* Green Background */
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #1a73e8;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #1a73e8;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0f5bb5;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #1a73e8;
+            color: white;
+        }
+        .actions button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .actions button:hover {
+            background-color: #d32f2f;
+        }
+        .file-input {
+            margin-top: 10px;
+        }
+        .form-section {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +122,9 @@
             <label for="link">Basecamp to-do link/Email Subject:</label>
             <input type="text" id="link" placeholder="Basecamp to-do link or Email Subject">
             
+            <!-- Dynamic Input for Different Categories -->
+            <div id="dynamicFields"></div>
+            
             <button onclick="addTask()">Add Task</button>
         </div>
 
@@ -93,16 +158,40 @@
         // Update form based on selected category
         function updateForm() {
             let category = document.getElementById("category").value;
-            let taskForm = document.getElementById("taskForm");
+            let dynamicFields = document.getElementById("dynamicFields");
+            dynamicFields.innerHTML = ""; // Reset dynamic fields
 
             if (category === "Product") {
-                taskForm.style.display = "block";
+                // No additional fields for Product category
             } else if (category === "Client") {
-                taskForm.style.display = "block";
+                let clientNameField = document.createElement("div");
+                clientNameField.innerHTML = `
+                    <label for="clientName">Client Name:</label>
+                    <input type="text" id="clientName" placeholder="Client Name">
+                `;
+                dynamicFields.appendChild(clientNameField);
             } else if (category === "Operation") {
-                taskForm.style.display = "block";
+                let operationField = document.createElement("div");
+                operationField.innerHTML = `
+                    <label for="operationType">UAT or Production:</label>
+                    <select id="operationType">
+                        <option value="UAT">UAT</option>
+                        <option value="Production">Production</option>
+                    </select>
+                `;
+                dynamicFields.appendChild(operationField);
             } else if (category === "WAR") {
-                taskForm.style.display = "block";
+                let warFields = `
+                    <label for="warClientName">Client Name:</label>
+                    <input type="text" id="warClientName" placeholder="Client Name">
+                    <label for="warType">UAT, Production or QA42:</label>
+                    <select id="warType">
+                        <option value="UAT">UAT</option>
+                        <option value="Production">Production</option>
+                        <option value="QA42">QA42</option>
+                    </select>
+                `;
+                dynamicFields.innerHTML = warFields;
             }
         }
 
@@ -118,12 +207,24 @@
             let end = document.getElementById("end").value;
             let link = document.getElementById("link").value;
 
+            let dynamicFieldValue = "";
+            if (category === "Client") {
+                dynamicFieldValue = document.getElementById("clientName").value;
+            } else if (category === "Operation") {
+                dynamicFieldValue = document.getElementById("operationType").value;
+            } else if (category === "WAR") {
+                dynamicFieldValue = {
+                    clientName: document.getElementById("warClientName").value,
+                    warType: document.getElementById("warType").value
+                };
+            }
+
             if (task === "" || resource === "" || tl === "" || hours === "" || tlHours === "" || start === "" || end === "" || link === "") {
                 alert("Please fill all fields!");
                 return;
             }
 
-            let newTask = { category, task, resource, tl, hours, tlHours, start, end, link };
+            let newTask = { category, task, resource, tl, hours, tlHours, start, end, link, dynamicFieldValue };
             tasks.push(newTask);
             displayTasks();
         }
@@ -165,6 +266,17 @@
             document.getElementById("start").value = task.start;
             document.getElementById("end").value = task.end;
             document.getElementById("link").value = task.link;
+
+            // Set dynamic fields based on category
+            updateForm();
+            if (task.category === "Client") {
+                document.getElementById("clientName").value = task.dynamicFieldValue;
+            } else if (task.category === "Operation") {
+                document.getElementById("operationType").value = task.dynamicFieldValue;
+            } else if (task.category === "WAR") {
+                document.getElementById("warClientName").value = task.dynamicFieldValue.clientName;
+                document.getElementById("warType").value = task.dynamicFieldValue.warType;
+            }
 
             deleteTask(index);
         }
