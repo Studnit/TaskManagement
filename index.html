@@ -12,7 +12,7 @@
             background-color: #f8f9fa;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             background: #ffffff;
             padding: 20px;
             border-radius: 10px;
@@ -23,10 +23,6 @@
             text-align: center;
             color: #007bff;
         }
-        .btn-primary, .btn-danger, .btn-success {
-            width: 100%;
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -34,39 +30,38 @@
         <h2><i class="fas fa-tasks"></i> Task Management</h2>
         <form id="taskForm">
             <div class="mb-3">
-                <label class="form-label">Task Number</label>
+                <label class="form-label">Sr. No.</label>
                 <input type="text" id="taskNumber" class="form-control" readonly>
             </div>
             
             <div class="mb-3">
+                <label class="form-label">Product Task</label>
+                <input type="text" id="productTask" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
                 <label class="form-label">Task Description</label>
-                <textarea id="taskDescription" class="form-control" rows="3" required></textarea>
+                <textarea id="taskDescription" class="form-control" rows="2" required></textarea>
             </div>
             
             <div class="mb-3">
-                <label class="form-label">Status</label>
-                <select id="taskStatus" class="form-control" required>
-                    <option value="">Select Status</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Pending">Pending</option>
-                </select>
+                <label class="form-label">Resource Name</label>
+                <input type="text" id="resourceName" class="form-control" required>
             </div>
             
             <div class="mb-3">
-                <label class="form-label">Task Allocation</label>
-                <select id="taskAllocation" class="form-control" required>
-                    <option value="">Select Allocation</option>
-                    <option value="Client Task">Client Task</option>
-                    <option value="Product Task">Product Task</option>
-                    <option value="Production Task">Production Task</option>
-                    <option value="Other">Other</option>
-                </select>
-                <input type="text" id="otherTask" class="form-control mt-2 d-none" placeholder="Specify Other">
+                <label class="form-label">TL Name</label>
+                <input type="text" id="tlName" class="form-control" required>
             </div>
             
             <div class="mb-3">
-                <label class="form-label">Working Hours</label>
-                <input id="workingHours" type="number" class="form-control" min="0" placeholder="Hours" required>
+                <label class="form-label">Resource Working Hours</label>
+                <input type="number" id="resourceHours" class="form-control" min="0" required>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">TL Working Hours</label>
+                <input type="number" id="tlHours" class="form-control" min="0" required>
             </div>
             
             <div class="row mb-3">
@@ -81,7 +76,7 @@
             </div>
             
             <div class="mb-3">
-                <label class="form-label">Basecamp/Mail Link</label>
+                <label class="form-label">Basecamp To-Do Link / Email Subject</label>
                 <input id="taskLink" type="text" class="form-control" placeholder="Enter text">
             </div>
             
@@ -103,10 +98,12 @@
                 event.preventDefault();
                 let task = {
                     id: "TASK-" + taskCounter,
+                    productTask: document.getElementById("productTask").value,
                     description: document.getElementById("taskDescription").value,
-                    status: document.getElementById("taskStatus").value,
-                    allocation: document.getElementById("taskAllocation").value,
-                    hours: document.getElementById("workingHours").value,
+                    resourceName: document.getElementById("resourceName").value,
+                    tlName: document.getElementById("tlName").value,
+                    resourceHours: document.getElementById("resourceHours").value,
+                    tlHours: document.getElementById("tlHours").value,
                     startDate: document.getElementById("startDate").value,
                     endDate: document.getElementById("endDate").value,
                     link: document.getElementById("taskLink").value
@@ -133,19 +130,9 @@
             tasks.forEach((task, index) => {
                 let li = document.createElement("li");
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.innerHTML = `
-                    ${task.id} - ${task.description} - ${task.status}
-                    <button class="btn btn-danger btn-sm" onclick="deleteTask(${index})"><i class="fas fa-trash"></i></button>
-                `;
+                li.innerHTML = `${task.id} - ${task.productTask} - ${task.description} - ${task.resourceName}`;
                 taskList.appendChild(li);
             });
-        }
-        
-        function deleteTask(index) {
-            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.splice(index, 1);
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-            loadTasks();
         }
         
         function downloadExcel() {
