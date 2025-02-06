@@ -81,6 +81,13 @@
         .form-section {
             margin-bottom: 20px;
         }
+        tr.dragging {
+            background-color: #f0f0f0;
+        }
+        .undo-redo-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -122,8 +129,17 @@
             <label for="link">Basecamp to-do link/Email Subject:</label>
             <input type="text" id="link" placeholder="Basecamp to-do link or Email Subject">
             
-            <!-- Dynamic Input for Different Categories -->
-            <div id="dynamicFields"></div>
+            <!-- Client Name -->
+            <label for="clientName">Client Name:</label>
+            <input type="text" id="clientName" placeholder="Client Name">
+            
+            <!-- Issue Type (UAT, Production, or QA42) -->
+            <label for="issueType">Issue Type (UAT, Production, or QA42):</label>
+            <select id="issueType">
+                <option value="UAT">UAT</option>
+                <option value="Production">Production</option>
+                <option value="QA42">QA42</option>
+            </select>
             
             <button onclick="addTask()">Add Task</button>
         </div>
@@ -138,9 +154,12 @@
                     <th>TL</th>
                     <th>Resource Hours</th>
                     <th>TL Hours</th>
-                    <th>Start</th>
-                    <th>End</th>
+                    <th>Start & End Date</th>
                     <th>Link</th>
+                    <th>Client Name</th>
+                    <th>Issue Type</th>
+                    <th>Working Days</th>
+                    <th>Working Hours</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -150,49 +169,38 @@
         <!-- Export & Import Buttons -->
         <button onclick="exportToExcel()">Export to Excel</button>
         <input type="file" id="fileInput" class="file-input" accept=".xlsx" onchange="importFromExcel()">
+
+        <!-- Undo/Redo Buttons -->
+        <div class="undo-redo-buttons">
+            <button onclick="undo()">Undo</button>
+            <button onclick="redo()">Redo</button>
+        </div>
     </div>
 
     <script>
         let tasks = [];
+        let undoStack = [];
+        let redoStack = [];
 
         // Update form based on selected category
         function updateForm() {
-            let category = document.getElementById("category").value;
-            let dynamicFields = document.getElementById("dynamicFields");
-            dynamicFields.innerHTML = ""; // Reset dynamic fields
+            // No changes needed here, as the dynamic fields are already set up
+        }
 
-            if (category === "Product") {
-                // No additional fields for Product category
-            } else if (category === "Client") {
-                let clientNameField = document.createElement("div");
-                clientNameField.innerHTML = `
-                    <label for="clientName">Client Name:</label>
-                    <input type="text" id="clientName" placeholder="Client Name">
-                `;
-                dynamicFields.appendChild(clientNameField);
-            } else if (category === "Operation") {
-                let operationField = document.createElement("div");
-                operationField.innerHTML = `
-                    <label for="operationType">UAT or Production:</label>
-                    <select id="operationType">
-                        <option value="UAT">UAT</option>
-                        <option value="Production">Production</option>
-                    </select>
-                `;
-                dynamicFields.appendChild(operationField);
-            } else if (category === "WAR") {
-                let warFields = `
-                    <label for="warClientName">Client Name:</label>
-                    <input type="text" id="warClientName" placeholder="Client Name">
-                    <label for="warType">UAT, Production or QA42:</label>
-                    <select id="warType">
-                        <option value="UAT">UAT</option>
-                        <option value="Production">Production</option>
-                        <option value="QA42">QA42</option>
-                    </select>
-                `;
-                dynamicFields.innerHTML = warFields;
+        // Calculate Working Days between two dates
+        function calculateWorkingDays(startDate, endDate) {
+            let start = new Date(startDate);
+            let end = new Date(endDate);
+            let days = 0;
+
+            while (start <= end) {
+                let day = start.getDay();
+                if (day != 0 && day != 6) { // Skip weekends
+                    days++;
+                }
+                start.setDate(start.getDate() + 1);
             }
+            return days;
         }
 
         // Add a new task
@@ -206,36 +214,61 @@
             let start = document.getElementById("start").value;
             let end = document.getElementById("end").value;
             let link = document.getElementById("link").value;
+            let clientName = document.getElementById("clientName").value;
+            let issueType = document.getElementById("issueType").value;
 
-            let dynamicFieldValue = "";
-            if (category === "Client") {
-                dynamicFieldValue = document.getElementById("clientName").value;
-            } else if (category === "Operation") {
-                dynamicFieldValue = document.getElementById("operationType").value;
-            } else if (category === "WAR") {
-                dynamicFieldValue = {
-                    clientName: document.getElementById("warClientName").value,
-                    warType: document.getElementById("warType").value
-                };
-            }
+            // Calculate working days
+            let workingDays = calculateWorkingDays(start, end);
 
-            if (task === "" || resource === "" || tl === "" || hours === "" || tlHours === "" || start === "" || end === "" || link === "") {
+            if (task === "" || resource === "" || tl === "" || hours === "" || tlHours === "" || start === "" || end === "" || link === "" || clientName === "" || issueType === "") {
                 alert("Please fill all fields!");
                 return;
             }
 
-            let newTask = { category, task, resource, tl, hours, tlHours, start, end, link, dynamicFieldValue };
+            let newTask = {
+                category,
+                task,
+                resource,
+                tl,
+                hours,
+                tlHours,
+                start,
+                end,
+                link,
+                clientName,
+                issueType,
+                workingDays,
+                workingHours: parseInt(hours) + parseInt(tlHours) // Total working hours
+            };
+
             tasks.push(newTask);
+            // Save to undo stack
+            undoStack.push({ action: 'add', task: newTask });
+            redoStack = []; // Clear redo stack after new action
             displayTasks();
+        }
+
+        // Sort tasks by Category and Start Date
+        function sortTasks() {
+            tasks.sort((a, b) => {
+                // Sort by category
+                if (a.category === b.category) {
+                    return new Date(a.start) - new Date(b.start); // Sort by start date if categories are same
+                }
+                return a.category.localeCompare(b.category); // Sort by category
+            });
         }
 
         // Display tasks in table
         function displayTasks() {
+            sortTasks(); // Sort tasks before displaying
             let tbody = document.querySelector("#taskTable tbody");
             tbody.innerHTML = "";
 
             tasks.forEach((task, index) => {
                 let row = tbody.insertRow();
+                row.setAttribute("draggable", "true");
+                row.setAttribute("data-index", index);
                 row.innerHTML = `
                     <td>${task.category}</td>
                     <td>${task.task}</td>
@@ -243,15 +276,46 @@
                     <td>${task.tl}</td>
                     <td>${task.hours}</td>
                     <td>${task.tlHours}</td>
-                    <td>${task.start}</td>
-                    <td>${task.end}</td>
+                    <td>${task.start} to ${task.end}</td>
                     <td>${task.link}</td>
+                    <td>${task.clientName}</td>
+                    <td>${task.issueType}</td>
+                    <td>${task.workingDays}</td>
+                    <td>${task.workingHours}</td>
                     <td class="actions">
                         <button onclick="editTask(${index})">Edit</button>
                         <button onclick="deleteTask(${index})">Delete</button>
                     </td>
                 `;
             });
+        }
+
+        // Undo the last action
+        function undo() {
+            if (undoStack.length > 0) {
+                let lastAction = undoStack.pop();
+                if (lastAction.action === 'add') {
+                    tasks.pop();
+                }
+                redoStack.push(lastAction);
+                displayTasks();
+            } else {
+                alert("No actions to undo.");
+            }
+        }
+
+        // Redo the last undone action
+        function redo() {
+            if (redoStack.length > 0) {
+                let lastUndoneAction = redoStack.pop();
+                if (lastUndoneAction.action === 'add') {
+                    tasks.push(lastUndoneAction.task);
+                }
+                undoStack.push(lastUndoneAction);
+                displayTasks();
+            } else {
+                alert("No actions to redo.");
+            }
         }
 
         // Edit a task
@@ -266,63 +330,88 @@
             document.getElementById("start").value = task.start;
             document.getElementById("end").value = task.end;
             document.getElementById("link").value = task.link;
-
-            // Set dynamic fields based on category
-            updateForm();
-            if (task.category === "Client") {
-                document.getElementById("clientName").value = task.dynamicFieldValue;
-            } else if (task.category === "Operation") {
-                document.getElementById("operationType").value = task.dynamicFieldValue;
-            } else if (task.category === "WAR") {
-                document.getElementById("warClientName").value = task.dynamicFieldValue.clientName;
-                document.getElementById("warType").value = task.dynamicFieldValue.warType;
-            }
+            document.getElementById("clientName").value = task.clientName;
+            document.getElementById("issueType").value = task.issueType;
 
             deleteTask(index);
         }
 
         // Delete a task
         function deleteTask(index) {
-            tasks.splice(index, 1);
+            let deletedTask = tasks.splice(index, 1)[0];
+            // Save to undo stack
+            undoStack.push({ action: 'delete', task: deletedTask });
+            redoStack = []; // Clear redo stack after new action
             displayTasks();
         }
 
         // Export tasks to Excel
         function exportToExcel() {
             let wb = XLSX.utils.book_new();
-            let wsData = [["Category", "Task Description", "Resource", "TL", "Resource Hours", "TL Hours", "Start", "End", "Link"]];
-            tasks.forEach(t => wsData.push([t.category, t.task, t.resource, t.tl, t.hours, t.tlHours, t.start, t.end, t.link]));
-
+            let wsData = [["Category", "Task Description", "Resource", "TL", "Resource Hours", "TL Hours", "Start Date", "End Date", "Link", "Client Name", "Issue Type", "Working Days", "Working Hours"]];
+            tasks.forEach(task => {
+                wsData.push([
+                    task.category,
+                    task.task,
+                    task.resource,
+                    task.tl,
+                    task.hours,
+                    task.tlHours,
+                    task.start,
+                    task.end,
+                    task.link,
+                    task.clientName,
+                    task.issueType,
+                    task.workingDays,
+                    task.workingHours
+                ]);
+            });
             let ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-            XLSX.writeFile(wb, "Task_Management.xlsx");
+            XLSX.writeFile(wb, "tasks.xlsx");
         }
 
         // Import tasks from Excel
         function importFromExcel() {
-            let file = document.getElementById("fileInput").files[0];
-            if (!file) return;
-
+            let file = document.getElementById('fileInput').files[0];
+            if (!file) {
+                alert('Please choose an Excel file!');
+                return;
+            }
             let reader = new FileReader();
-            reader.onload = function (e) {
+            reader.onload = function(e) {
                 let data = new Uint8Array(e.target.result);
                 let workbook = XLSX.read(data, { type: 'array' });
-
                 let sheet = workbook.Sheets[workbook.SheetNames[0]];
-                let jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
                 tasks = [];
-                jsonData.slice(1).forEach(row => {
-                    if (row.length >= 9) {
-                        let [category, task, resource, tl, hours, tlHours, start, end, link] = row;
-                        tasks.push({ category, task, resource, tl, hours, tlHours, start, end, link });
-                    }
+                json.slice(1).forEach(row => {
+                    let [category, task, resource, tl, hours, tlHours, startEnd, link, clientName, issueType, workingDays, workingHours] = row;
+                    let [start, end] = startEnd.split(' to ');
+
+                    tasks.push({
+                        category,
+                        task,
+                        resource,
+                        tl,
+                        hours,
+                        tlHours,
+                        start,
+                        end,
+                        link,
+                        clientName,
+                        issueType,
+                        workingDays,
+                        workingHours
+                    });
                 });
 
                 displayTasks();
             };
             reader.readAsArrayBuffer(file);
         }
+
     </script>
 </body>
 </html>
