@@ -6,12 +6,19 @@
     <title>Task Management System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .container { max-width: 1200px; margin: auto; padding: 20px; }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 900px; margin: auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        h2 { text-align: center; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #4CAF50; color: white; }
-        button { margin-top: 10px; padding: 10px; }
+        .actions button { margin-right: 5px; }
+        .file-input { margin-top: 10px; }
+        .form-section { margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -20,21 +27,41 @@
         
         <!-- Category Selection -->
         <label for="category">Select Category:</label>
-        <select id="category">
+        <select id="category" onchange="updateForm()">
             <option value="Product">Product</option>
             <option value="Client">Client</option>
             <option value="Operation">Operation</option>
             <option value="WAR">WAR</option>
         </select>
 
-        <!-- Task Input Form -->
-        <input type="text" id="task" placeholder="Task Description">
-        <input type="text" id="resource" placeholder="Resource Name">
-        <input type="text" id="tl" placeholder="TL Name">
-        <input type="text" id="hours" placeholder="Working Hours">
-        <input type="date" id="start">
-        <input type="date" id="end">
-        <button onclick="addTask()">Add Task</button>
+        <!-- Dynamic Task Input Form -->
+        <div id="taskForm" class="form-section">
+            <label for="task">Task Description:</label>
+            <input type="text" id="task" placeholder="Task Description">
+            
+            <label for="resource">Resource Name:</label>
+            <input type="text" id="resource" placeholder="Resource Name">
+            
+            <label for="tl">TL Name:</label>
+            <input type="text" id="tl" placeholder="TL Name">
+            
+            <label for="hours">Resource Working Hours:</label>
+            <input type="text" id="hours" placeholder="Resource Working Hours">
+            
+            <label for="tlHours">TL Working Hours:</label>
+            <input type="text" id="tlHours" placeholder="TL Working Hours">
+            
+            <label for="start">Start Date:</label>
+            <input type="date" id="start">
+            
+            <label for="end">End Date:</label>
+            <input type="date" id="end">
+            
+            <label for="link">Basecamp to-do link/Email Subject:</label>
+            <input type="text" id="link" placeholder="Basecamp to-do link or Email Subject">
+            
+            <button onclick="addTask()">Add Task</button>
+        </div>
 
         <!-- Task Display Table -->
         <table id="taskTable">
@@ -44,9 +71,11 @@
                     <th>Task Description</th>
                     <th>Resource</th>
                     <th>TL</th>
-                    <th>Hours</th>
+                    <th>Resource Hours</th>
+                    <th>TL Hours</th>
                     <th>Start</th>
                     <th>End</th>
+                    <th>Link</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -55,31 +84,51 @@
 
         <!-- Export & Import Buttons -->
         <button onclick="exportToExcel()">Export to Excel</button>
-        <input type="file" id="fileInput" accept=".xlsx" onchange="importFromExcel()">
+        <input type="file" id="fileInput" class="file-input" accept=".xlsx" onchange="importFromExcel()">
     </div>
 
     <script>
         let tasks = [];
 
+        // Update form based on selected category
+        function updateForm() {
+            let category = document.getElementById("category").value;
+            let taskForm = document.getElementById("taskForm");
+
+            if (category === "Product") {
+                taskForm.style.display = "block";
+            } else if (category === "Client") {
+                taskForm.style.display = "block";
+            } else if (category === "Operation") {
+                taskForm.style.display = "block";
+            } else if (category === "WAR") {
+                taskForm.style.display = "block";
+            }
+        }
+
+        // Add a new task
         function addTask() {
             let category = document.getElementById("category").value;
             let task = document.getElementById("task").value;
             let resource = document.getElementById("resource").value;
             let tl = document.getElementById("tl").value;
             let hours = document.getElementById("hours").value;
+            let tlHours = document.getElementById("tlHours").value;
             let start = document.getElementById("start").value;
             let end = document.getElementById("end").value;
+            let link = document.getElementById("link").value;
 
-            if (task === "" || resource === "" || tl === "" || hours === "" || start === "" || end === "") {
+            if (task === "" || resource === "" || tl === "" || hours === "" || tlHours === "" || start === "" || end === "" || link === "") {
                 alert("Please fill all fields!");
                 return;
             }
 
-            let newTask = { category, task, resource, tl, hours, start, end };
+            let newTask = { category, task, resource, tl, hours, tlHours, start, end, link };
             tasks.push(newTask);
             displayTasks();
         }
 
+        // Display tasks in table
         function displayTasks() {
             let tbody = document.querySelector("#taskTable tbody");
             tbody.innerHTML = "";
@@ -92,9 +141,11 @@
                     <td>${task.resource}</td>
                     <td>${task.tl}</td>
                     <td>${task.hours}</td>
+                    <td>${task.tlHours}</td>
                     <td>${task.start}</td>
                     <td>${task.end}</td>
-                    <td>
+                    <td>${task.link}</td>
+                    <td class="actions">
                         <button onclick="editTask(${index})">Edit</button>
                         <button onclick="deleteTask(${index})">Delete</button>
                     </td>
@@ -102,6 +153,7 @@
             });
         }
 
+        // Edit a task
         function editTask(index) {
             let task = tasks[index];
             document.getElementById("category").value = task.category;
@@ -109,27 +161,32 @@
             document.getElementById("resource").value = task.resource;
             document.getElementById("tl").value = task.tl;
             document.getElementById("hours").value = task.hours;
+            document.getElementById("tlHours").value = task.tlHours;
             document.getElementById("start").value = task.start;
             document.getElementById("end").value = task.end;
+            document.getElementById("link").value = task.link;
 
             deleteTask(index);
         }
 
+        // Delete a task
         function deleteTask(index) {
             tasks.splice(index, 1);
             displayTasks();
         }
 
+        // Export tasks to Excel
         function exportToExcel() {
             let wb = XLSX.utils.book_new();
-            let wsData = [["Category", "Task Description", "Resource", "TL", "Hours", "Start", "End"]];
-            tasks.forEach(t => wsData.push([t.category, t.task, t.resource, t.tl, t.hours, t.start, t.end]));
+            let wsData = [["Category", "Task Description", "Resource", "TL", "Resource Hours", "TL Hours", "Start", "End", "Link"]];
+            tasks.forEach(t => wsData.push([t.category, t.task, t.resource, t.tl, t.hours, t.tlHours, t.start, t.end, t.link]));
 
             let ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "Tasks");
             XLSX.writeFile(wb, "Task_Management.xlsx");
         }
 
+        // Import tasks from Excel
         function importFromExcel() {
             let file = document.getElementById("fileInput").files[0];
             if (!file) return;
@@ -144,9 +201,9 @@
 
                 tasks = [];
                 jsonData.slice(1).forEach(row => {
-                    if (row.length >= 7) {
-                        let [category, task, resource, tl, hours, start, end] = row;
-                        tasks.push({ category, task, resource, tl, hours, start, end });
+                    if (row.length >= 9) {
+                        let [category, task, resource, tl, hours, tlHours, start, end, link] = row;
+                        tasks.push({ category, task, resource, tl, hours, tlHours, start, end, link });
                     }
                 });
 
