@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+        h2 {
+            text-align: center;
+            color: #007bff;
+        }
+        .btn-primary, .btn-danger, .btn-success {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2><i class="fas fa-tasks"></i> Task Management</h2>
+        <form id="taskForm">
+            <div class="mb-3">
+                <label class="form-label">Task Number</label>
+                <input type="text" id="taskNumber" class="form-control" readonly>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Task Description</label>
+                <textarea id="taskDescription" class="form-control" rows="3" required></textarea>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select id="taskStatus" class="form-control" required>
+                    <option value="">Select Status</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Task Allocation</label>
+                <select id="taskAllocation" class="form-control" required>
+                    <option value="">Select Allocation</option>
+                    <option value="Client Task">Client Task</option>
+                    <option value="Product Task">Product Task</option>
+                    <option value="Production Task">Production Task</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="text" id="otherTask" class="form-control mt-2 d-none" placeholder="Specify Other">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Working Hours</label>
+                <input id="workingHours" type="number" class="form-control" min="0" placeholder="Hours" required>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Start Date</label>
+                    <input id="startDate" type="date" class="form-control" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">End Date</label>
+                    <input id="endDate" type="date" class="form-control" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Basecamp/Mail Link</label>
+                <input id="taskLink" type="url" class="form-control" placeholder="Enter link">
+            </div>
+            
+            <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit</button>
+        </form>
+        <hr>
+        <h3>Task List</h3>
+        <ul id="taskList" class="list-group"></ul>
+        <button class="btn btn-success" onclick="downloadExcel()"><i class="fas fa-file-excel"></i> Download Excel</button>
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let taskCounter = localStorage.getItem("taskCounter") || 1;
+            document.getElementById("taskNumber").value = "TASK-" + taskCounter;
+            loadTasks();
+            
+            document.getElementById("taskForm").addEventListener("submit", function (event) {
+                event.preventDefault();
+                let task = {
+                    id: "TASK-" + taskCounter,
+                    description: document.getElementById("taskDescription").value,
+                    status: document.getElementById("taskStatus").value,
+                    allocation: document.getElementById("taskAllocation").value,
+                    hours: document.getElementById("workingHours").value,
+                    startDate: document.getElementById("startDate").value,
+                    endDate: document.getElementById("endDate").value,
+                    link: document.getElementById("taskLink").value
+                };
+                saveTask(task);
+                taskCounter++;
+                localStorage.setItem("taskCounter", taskCounter);
+                document.getElementById("taskNumber").value = "TASK-" + taskCounter;
+                document.getElementById("taskForm").reset();
+            });
+        });
+        
+        function saveTask(task) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.push(task);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            loadTasks();
+        }
+        
+        function loadTasks() {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            let taskList = document.getElementById("taskList");
+            taskList.innerHTML = "";
+            tasks.forEach((task, index) => {
+                let li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.innerHTML = `
+                    ${task.id} - ${task.description} - ${task.status}
+                    <button class="btn btn-danger btn-sm" onclick="deleteTask(${index})"><i class="fas fa-trash"></i></button>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+        
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            tasks.splice(index, 1);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            loadTasks();
+        }
+        
+        function downloadExcel() {
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+            let ws = XLSX.utils.json_to_sheet(tasks);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Tasks");
+            XLSX.writeFile(wb, "Task_List.xlsx");
+        }
+    </script>
+</body>
+</html>
